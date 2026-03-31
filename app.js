@@ -1,60 +1,46 @@
-/*
- * SPDX-License-Identifier: Apache-2.0
- * B2B Invoice Fraud Prevention System - Main Server
- */
-
 'use strict';
 
 const express = require('express');
-const bodyParser = require('body-parser');
 const cors = require('cors');
-const path = require('path');
-const invoiceRoutes = require('./routes');
+const routes = require('./routes');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
-// Middleware
+// ===================== MIDDLEWARE =====================
+
+// Built-in body parser (no need for body-parser package)
+app.use(express.json());
+
+// Enable CORS (for frontend connection)
 app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
 
-// Serve static frontend files if you have a 'public' folder
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Logging Middleware for Blockchain Transactions
+// Simple request logger (helps debugging)
 app.use((req, res, next) => {
-    if (req.method === 'POST') {
-        console.log(`[${new Date().toISOString()}] Transaction Attempt: ${req.path} by Role: ${req.body.role || 'Unknown'}`);
-    }
+    console.log(`📡 ${req.method} ${req.url}`);
     next();
 });
 
-// API Routes
-app.use('/api', invoiceRoutes);
+// ===================== ROUTES =====================
+app.use('/api', routes);
 
-// Health Check Endpoint
-app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'UP', network: 'Hyperledger Fabric', channel: 'mychannel' });
+// ===================== HEALTH CHECK =====================
+app.get('/', (req, res) => {
+    res.send('🚀 Fabric Backend is running');
 });
 
-// Global Error Handler
+// ===================== ERROR HANDLER =====================
 app.use((err, req, res, next) => {
-    console.error('Unhandled Server Error:', err.stack);
+    console.error('❌ Unhandled Error:', err);
+
     res.status(500).json({
-        error: 'Internal Server Error',
-        message: err.message
+        success: false,
+        error: 'Internal Server Error'
     });
 });
 
-// Start the server
+// ===================== START SERVER =====================
+const PORT = process.env.PORT || 3000;
+
 app.listen(PORT, () => {
-    console.log(`
-    🚀 B2B Fraud Prevention Server Running
-    --------------------------------------
-    Local URL: http://localhost:${PORT}
-    Network:   Hyperledger Fabric v2.x
-    Status:    Awaiting P2P Settlements...
-    --------------------------------------
-    `);
+    console.log(`🔥 Server running on http://localhost:${PORT}`);
 });
