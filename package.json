@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "express": "^5.2.1",
+    "fabric-network": "^2.2.20",
+    "fabric-ca-client": "^2.2.20"
+  }
+}
