@@ -24,7 +24,7 @@ async function connectFabric(role) {
 
         const network = await gateway.getNetwork('mychannel');
         // Fix: Chaincode name alignment
-        const contract = network.getContract('b2b-fraud');
+        const contract = network.getContract('basic');
 
         return { gateway, contract };
     } catch (error) {
