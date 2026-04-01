@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math"
+	"strings"
 
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
 )
@@ -17,7 +19,7 @@ type Invoice struct {
 	ID              string  `json:"id"`
 	VendorID        string  `json:"vendorId"`
 	Amount          float64 `json:"amount"`
-	Status          string  `json:"status"` // Pending, Verified, Paid
+	Status          string  `json:"status"`
 	PurchaseOrderID string  `json:"purchaseOrderId"`
 }
 
@@ -35,74 +37,66 @@ type PurchaseOrder struct {
 
 // ===================== VENDOR =====================
 
-// Wallet-Identity Binding
-func (s *SmartContract) RegisterVendor(ctx contractapi.TransactionContextInterface, id string, name string, wallet string) error {
+func (s *SmartContract) RegisterVendor(ctx contractapi.TransactionContextInterface, id, name, wallet string) error {
 
 	exists, err := ctx.GetStub().GetState(id)
 	if err != nil {
 		return err
 	}
 	if exists != nil {
-		return fmt.Errorf("vendor %s already exists", id)
+		return fmt.Errorf("vendor already exists")
 	}
 
-	vendor := Vendor{
-		ID:               id,
-		Name:             name,
-		AuthorizedWallet: wallet,
-	}
+	vendor := Vendor{id, name, wallet}
+	bytes, _ := json.Marshal(vendor)
 
-	vendorBytes, err := json.Marshal(vendor)
-	if err != nil {
-		return err
-	}
-
-	return ctx.GetStub().PutState(id, vendorBytes)
+	return ctx.GetStub().PutState(id, bytes)
 }
 
 // ===================== PURCHASE ORDER =====================
 
-func (s *SmartContract) CreatePurchaseOrder(ctx contractapi.TransactionContextInterface, id string, vendorId string, amount float64) error {
+func (s *SmartContract) CreatePurchaseOrder(ctx contractapi.TransactionContextInterface, id, vendorId string, amount float64) error {
 
-	exists, err := ctx.GetStub().GetState(id)
-	if err != nil {
-		return err
-	}
-	if exists != nil {
-		return fmt.Errorf("PO %s already exists", id)
+	if state, _ := ctx.GetStub().GetState(id); state != nil {
+		return fmt.Errorf("PO already exists")
 	}
 
-	// Ensure vendor exists
-	vendorBytes, err := ctx.GetStub().GetState(vendorId)
-	if err != nil || vendorBytes == nil {
+	vendorBytes, _ := ctx.GetStub().GetState(vendorId)
+	if vendorBytes == nil {
 		return fmt.Errorf("vendor not found")
 	}
 
-	po := PurchaseOrder{
-		ID:       id,
-		VendorID: vendorId,
-		Amount:   amount,
-	}
+	po := PurchaseOrder{id, vendorId, amount}
+	bytes, _ := json.Marshal(po)
 
-	poBytes, err := json.Marshal(po)
-	if err != nil {
-		return err
-	}
-
-	return ctx.GetStub().PutState(id, poBytes)
+	return ctx.GetStub().PutState(id, bytes)
 }
 
 // ===================== INVOICE =====================
 
-// Upload → Pending (NOT verified yet)
-func (s *SmartContract) UploadInvoice(ctx contractapi.TransactionContextInterface, id string, vendorId string, amount float64, poId string) error {
+func (s *SmartContract) UploadInvoice(ctx contractapi.TransactionContextInterface, id, vendorId string, amount float64, poId string) error {
 
-	exists, err := ctx.GetStub().GetState(id)
-	if err != nil {
-		return err
+	if state, _ := ctx.GetStub().GetState(id); state != nil {
+		return fmt.Errorf("invoice exists")
 	}
-	if exists != nil {
-		return fmt.Errorf("invoice %s already exists", id)
+
+	// Validate vendor
+	vendorBytes, _ := ctx.GetStub().GetState(vendorId)
+	if vendorBytes == nil {
+		return fmt.Errorf("vendor not found")
+	}
+
+	// Validate PO
+	poBytes, _ := ctx.GetStub().GetState(poId)
+	if poBytes == nil {
+		return fmt.Errorf("PO not found")
+	}
+
+	var po PurchaseOrder
+	json.Unmarshal(poBytes, &po)
+
+	if po.VendorID != vendorId {
+		return fmt.Errorf("vendor mismatch with PO")
 	}
 
 	invoice := Invoice{
@@ -113,143 +107,97 @@ func (s *SmartContract) UploadInvoice(ctx contractapi.TransactionContextInterfac
 		PurchaseOrderID: poId,
 	}
 
-	invoiceBytes, err := json.Marshal(invoice)
-	if err != nil {
-		return err
-	}
-
-	return ctx.GetStub().PutState(id, invoiceBytes)
+	bytes, _ := json.Marshal(invoice)
+	return ctx.GetStub().PutState(id, bytes)
 }
 
-// ===================== 3-WAY MATCH =====================
+// ===================== VERIFY =====================
 
-// Buyer verifies invoice
 func (s *SmartContract) VerifyInvoice(ctx contractapi.TransactionContextInterface, invoiceId string) error {
 
-	invoiceBytes, err := ctx.GetStub().GetState(invoiceId)
-	if err != nil || invoiceBytes == nil {
+	bytes, _ := ctx.GetStub().GetState(invoiceId)
+	if bytes == nil {
 		return fmt.Errorf("invoice not found")
 	}
 
 	var invoice Invoice
-	err = json.Unmarshal(invoiceBytes, &invoice)
-	if err != nil {
-		return err
+	json.Unmarshal(bytes, &invoice)
+
+	if invoice.Status == "Verified" {
+		return fmt.Errorf("already verified")
 	}
 
-	// Get PO
-	poBytes, err := ctx.GetStub().GetState(invoice.PurchaseOrderID)
-	if err != nil || poBytes == nil {
-		return fmt.Errorf("purchase order not found")
+	poBytes, _ := ctx.GetStub().GetState(invoice.PurchaseOrderID)
+	if poBytes == nil {
+		return fmt.Errorf("PO not found")
 	}
 
 	var po PurchaseOrder
-	err = json.Unmarshal(poBytes, &po)
-	if err != nil {
-		return err
-	}
+	json.Unmarshal(poBytes, &po)
 
-	// 🔥 3-WAY MATCH LOGIC
-	if invoice.VendorID != po.VendorID || invoice.Amount != po.Amount {
-		return fmt.Errorf("3-Way Match Failed: Invoice does not match PO")
+	if invoice.VendorID != po.VendorID ||
+		math.Abs(invoice.Amount-po.Amount) > 0.0001 {
+		return fmt.Errorf("3-way match failed")
 	}
 
 	invoice.Status = "Verified"
+	updated, _ := json.Marshal(invoice)
 
-	updatedBytes, err := json.Marshal(invoice)
-	if err != nil {
-		return err
-	}
-
-	err = ctx.GetStub().PutState(invoiceId, updatedBytes)
-	if err != nil {
-		return err
-	}
-
-	// Event for audit
-	ctx.GetStub().SetEvent("InvoiceVerified", updatedBytes)
-
-	return nil
+	ctx.GetStub().SetEvent("InvoiceVerified", updated)
+	return ctx.GetStub().PutState(invoiceId, updated)
 }
 
 // ===================== PAYMENT =====================
 
-func (s *SmartContract) ProcessPayment(ctx contractapi.TransactionContextInterface, invoiceId string, toWallet string) error {
+func (s *SmartContract) ProcessPayment(ctx contractapi.TransactionContextInterface, invoiceId, toWallet string) error {
 
-	invoiceBytes, err := ctx.GetStub().GetState(invoiceId)
-	if err != nil || invoiceBytes == nil {
+	bytes, _ := ctx.GetStub().GetState(invoiceId)
+	if bytes == nil {
 		return fmt.Errorf("invoice not found")
 	}
 
 	var invoice Invoice
-	err = json.Unmarshal(invoiceBytes, &invoice)
-	if err != nil {
-		return err
-	}
+	json.Unmarshal(bytes, &invoice)
 
-	// ❌ Prevent duplicate payment
 	if invoice.Status == "Paid" {
-		return fmt.Errorf("CRITICAL: invoice already paid")
+		return fmt.Errorf("already paid")
 	}
 
-	// ❌ Ensure invoice is verified
 	if invoice.Status != "Verified" {
-		return fmt.Errorf("invoice not verified")
+		return fmt.Errorf("not verified")
 	}
 
-	// Get vendor
-	vendorBytes, err := ctx.GetStub().GetState(invoice.VendorID)
-	if err != nil || vendorBytes == nil {
+	vendorBytes, _ := ctx.GetStub().GetState(invoice.VendorID)
+	if vendorBytes == nil {
 		return fmt.Errorf("vendor not found")
 	}
 
 	var vendor Vendor
-	err = json.Unmarshal(vendorBytes, &vendor)
-	if err != nil {
-		return err
+	json.Unmarshal(vendorBytes, &vendor)
+
+	if strings.TrimSpace(strings.ToLower(toWallet)) !=
+		strings.TrimSpace(strings.ToLower(vendor.AuthorizedWallet)) {
+		return fmt.Errorf("wallet mismatch")
 	}
 
-	// 🔥 Wallet Binding Check
-	if toWallet != vendor.AuthorizedWallet {
-		return fmt.Errorf("FRAUD ALERT: wallet mismatch")
-	}
-
-	// ✅ Mark as paid
 	invoice.Status = "Paid"
+	updated, _ := json.Marshal(invoice)
 
-	updatedBytes, err := json.Marshal(invoice)
-	if err != nil {
-		return err
-	}
-
-	err = ctx.GetStub().PutState(invoiceId, updatedBytes)
-	if err != nil {
-		return err
-	}
-
-	// 🔥 Event logging (audit trail)
-	ctx.GetStub().SetEvent("PaymentProcessed", updatedBytes)
-
-	return nil
+	ctx.GetStub().SetEvent("PaymentProcessed", updated)
+	return ctx.GetStub().PutState(invoiceId, updated)
 }
 
 // ===================== QUERY =====================
 
 func (s *SmartContract) QueryInvoice(ctx contractapi.TransactionContextInterface, id string) (*Invoice, error) {
 
-	invoiceBytes, err := ctx.GetStub().GetState(id)
-	if err != nil {
-		return nil, err
-	}
-	if invoiceBytes == nil {
-		return nil, fmt.Errorf("invoice not found")
+	bytes, _ := ctx.GetStub().GetState(id)
+	if bytes == nil {
+		return nil, fmt.Errorf("not found")
 	}
 
 	var invoice Invoice
-	err = json.Unmarshal(invoiceBytes, &invoice)
-	if err != nil {
-		return nil, err
-	}
+	json.Unmarshal(bytes, &invoice)
 
 	return &invoice, nil
 }
@@ -257,13 +205,6 @@ func (s *SmartContract) QueryInvoice(ctx contractapi.TransactionContextInterface
 // ===================== MAIN =====================
 
 func main() {
-	cc, err := contractapi.NewChaincode(&SmartContract{})
-	if err != nil {
-		fmt.Printf("Error creating chaincode: %s", err.Error())
-		return
-	}
-
-	if err := cc.Start(); err != nil {
-		fmt.Printf("Error starting chaincode: %s", err.Error())
-	}
+	cc, _ := contractapi.NewChaincode(&SmartContract{})
+	cc.Start()
 }
