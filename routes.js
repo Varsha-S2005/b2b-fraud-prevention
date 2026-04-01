@@ -15,6 +15,7 @@ function validate(fields, body) {
 }
 
 // ===================== REGISTER VENDOR =====================
+// Matches "Register Identity" in Flowchart
 router.post('/register-vendor', async (req, res) => {
     let gateway;
 
@@ -28,6 +29,7 @@ router.post('/register-vendor', async (req, res) => {
         gateway = result.gateway;
         const contract = result.contract;
 
+        // Logic: Binds Vendor ID to a specific Authorized Wallet
         await contract.submitTransaction('RegisterVendor', id, name, wallet);
 
         res.json({
@@ -43,6 +45,7 @@ router.post('/register-vendor', async (req, res) => {
 });
 
 // ===================== UPLOAD INVOICE =====================
+// Matches "Upload Digital Invoice" in Flowchart
 router.post('/upload-invoice', async (req, res) => {
     let gateway;
 
@@ -66,7 +69,7 @@ router.post('/upload-invoice', async (req, res) => {
 
         res.json({
             success: true,
-            message: '📄 Invoice uploaded (Pending)'
+            message: '📄 Invoice uploaded (Pending Verification)'
         });
 
     } catch (e) {
@@ -77,6 +80,7 @@ router.post('/upload-invoice', async (req, res) => {
 });
 
 // ===================== VERIFY INVOICE (3-WAY MATCH) =====================
+// Matches "Details Match?" decision in Flowchart
 router.post('/verify-invoice', async (req, res) => {
     let gateway;
 
@@ -90,6 +94,7 @@ router.post('/verify-invoice', async (req, res) => {
         gateway = result.gateway;
         const contract = result.contract;
 
+        // Logic: Compares Invoice vs PO vs Goods Receipt
         await contract.submitTransaction('VerifyInvoice', invoiceId);
 
         res.json({
@@ -105,6 +110,7 @@ router.post('/verify-invoice', async (req, res) => {
 });
 
 // ===================== PROCESS PAYMENT =====================
+// Matches "Wallet Verified?" and "Execute Transfer" in Flowchart
 router.post('/pay', async (req, res) => {
     let gateway;
 
@@ -118,6 +124,7 @@ router.post('/pay', async (req, res) => {
         gateway = result.gateway;
         const contract = result.contract;
 
+        // Logic: Prevents double disbursement and fund diversion (Wallet Check)
         await contract.submitTransaction(
             'ProcessPayment',
             invoiceId,
@@ -137,6 +144,7 @@ router.post('/pay', async (req, res) => {
 });
 
 // ===================== QUERY INVOICE (AUDITOR) =====================
+// Matches "Access Financial Records" in Flowchart
 router.get('/invoice/:id', async (req, res) => {
     let gateway;
 
