@@ -69,10 +69,13 @@ async function main() {
         };
 
         // ===================== STORE IN WALLET =====================
-        await wallet.put('Admin@org1.example.com', x509Identity);
+        // We save the same identity under different aliases so your 
+        // role-based routes (Vendor, Buyer, Auditor) all work.
+        await wallet.put('VENDORUser', x509Identity);
+        await wallet.put('BUYERUser', x509Identity);
+        await wallet.put('AUDITORUser', x509Identity);
 
-        console.log('🎉 Successfully enrolled admin user and imported into wallet');
-
+        console.log('🎉 Successfully enrolled identities: VENDORUser, BUYERUser, AUDITORUser');
     } catch (error) {
         console.error('❌ Failed to enroll admin user:', error);
         process.exit(1);
