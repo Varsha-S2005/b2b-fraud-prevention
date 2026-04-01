@@ -169,4 +169,30 @@ router.get('/invoice/:id', async (req, res) => {
     }
 });
 
+// CREATE PURCHASE ORDER
+router.post('/create-po', async (req, res) => {
+    let gateway;
+
+    try {
+        const { id, vendorId, amount } = req.body;
+
+        const result = await connectFabric('BUYER');
+        gateway = result.gateway;
+
+        await result.contract.submitTransaction(
+            'CreatePurchaseOrder',
+            id,
+            vendorId,
+            amount.toString()
+        );
+
+        res.json({ success: true });
+
+    } catch (e) {
+        res.status(400).json({ error: e.message });
+    } finally {
+        await disconnectFabric(gateway);
+    }
+});
+
 module.exports = router;
