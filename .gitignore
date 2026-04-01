@@ -56,7 +56,8 @@ go.work
 chaincode/vendor/
 
 # Go modules cache
-go.sum
+go mod tidy
+git add go.sum
 
 # Chaincode build artifacts
 chaincode/basic.tar.gz
