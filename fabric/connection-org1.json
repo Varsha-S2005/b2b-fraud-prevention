@@ -30,9 +30,8 @@
       "url": "grpcs://localhost:7051",
 
       "tlsCACerts": {
-        "path": "/home/$USER/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/tlsca/tlsca.org1.example.com-cert.pem"
-      },
-
+    "path": "/home/sv/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/tlsca/tlsca.org1.example.com-cert.pem"
+}
       "grpcOptions": {
         "ssl-target-name-override": "peer0.org1.example.com",
         "hostnameOverride": "peer0.org1.example.com"
