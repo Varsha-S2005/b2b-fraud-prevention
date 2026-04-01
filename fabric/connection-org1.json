@@ -1,7 +1,6 @@
 {
   "name": "test-network-org1",
   "version": "1.0.0",
-
   "client": {
     "organization": "Org1",
     "connection": {
@@ -12,46 +11,35 @@
       }
     }
   },
-
   "organizations": {
     "Org1": {
       "mspid": "Org1MSP",
-      "peers": [
-        "peer0.org1.example.com"
-      ],
-      "certificateAuthorities": [
-        "ca.org1.example.com"
-      ]
+      "peers": ["peer0.org1.example.com"],
+      "certificateAuthorities": ["ca.org1.example.com"]
     }
   },
-
   "peers": {
     "peer0.org1.example.com": {
       "url": "grpcs://localhost:7051",
-
       "tlsCACerts": {
-    "path": "/home/sv/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/tlsca/tlsca.org1.example.com-cert.pem"
-}
+        "path": "/home/sv/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/tlsca/tlsca.org1.example.com-cert.pem"
+      },
       "grpcOptions": {
         "ssl-target-name-override": "peer0.org1.example.com",
         "hostnameOverride": "peer0.org1.example.com"
       }
     }
   },
-
   "certificateAuthorities": {
     "ca.org1.example.com": {
-      "url": "http://localhost:7054",
+      "url": "https://localhost:7054",
       "caName": "ca-org1",
-
       "tlsCACerts": {
-        "path": "/home/$USER/fabric-samples/test-network/organizations/fabric-ca/org1/tls-cert.pem"
+        "path": "/home/sv/fabric-samples/test-network/organizations/fabric-ca/org1/tls-cert.pem"
       },
-
       "httpOptions": {
         "verify": false
       },
-
       "registrar": [
         {
           "enrollId": "admin",
