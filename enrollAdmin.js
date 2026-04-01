@@ -27,8 +27,6 @@ async function main() {
 
         // Added these so your fabric.js roles work
         await wallet.put('Admin@org1.example.com', x509Identity);
-        await wallet.put('VENDORUser', x509Identity);
-        await wallet.put('BUYERUser', x509Identity);
 
         console.log('🎉 Successfully enrolled identities');
     } catch (error) {
