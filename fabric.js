@@ -54,7 +54,7 @@ async function connectFabric(role) {
         const network = await gateway.getNetwork('mychannel');
 
         // 🔥 IMPORTANT: change if your chaincode name differs
-        const contract = network.getContract('invoice-chaincode');
+        const contract = network.getContract('b2b-fraud');
 
         return { gateway, contract };
 
