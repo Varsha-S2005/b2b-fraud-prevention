@@ -4,11 +4,7 @@
   "client": {
     "organization": "Org1",
     "connection": {
-      "timeout": {
-        "peer": {
-          "endorser": "300"
-        }
-      }
+      "timeout": { "peer": { "endorser": "300" } }
     }
   },
   "organizations": {
@@ -37,15 +33,8 @@
       "tlsCACerts": {
         "path": "/home/sv/fabric-samples/test-network/organizations/fabric-ca/org1/tls-cert.pem"
       },
-      "httpOptions": {
-        "verify": false
-      },
-      "registrar": [
-        {
-          "enrollId": "admin",
-          "enrollSecret": "adminpw"
-        }
-      ]
+      "httpOptions": { "verify": false },
+      "registrar": [{ "enrollId": "admin", "enrollSecret": "adminpw" }]
     }
   }
 }
