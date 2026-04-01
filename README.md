@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # B2B Financial Fraud Prevention System
 
 A Hyperledger Fabric-based blockchain solution for preventing financial fraud in B2B transactions, specifically targeting invoice financing, fund diversion, and double financing scenarios.
@@ -316,3 +317,6 @@ Identities are stored in `./wallet/` directory:
 - **Format**: File system wallet using fabric-network SDK
 - **Dynamic**: New identities can be registered via Fabric CA
 - **Role Attributes**: Each identity includes role-based permissions
+=======
+# b2b-fraud-prevention
+>>>>>>> 9454d12 (Initial commit)
